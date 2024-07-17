@@ -28,7 +28,10 @@ pub fn process_instruction(
     instruction_data: &[u8],
 ) -> ProgramResult {
     msg!("Hello World Rust program entrypoint");
+    msg!("Instruction data: {:?}", instruction_data);
     let instruction = HelloInstruction::unpack(instruction_data)?;
+    msg!("Instruction: {:?}", instruction);
+
 
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
@@ -37,10 +40,10 @@ pub fn process_instruction(
     let account = next_account_info(accounts_iter)?;
 
     // The account must be owned by the program in order to modify its data
-    if account.owner != program_id {
-        msg!("Greeted account does not have the correct program id");
-        return Err(ProgramError::IncorrectProgramId);
-    }
+    // if account.owner != program_id {
+    //     msg!("Greeted account does not have the correct program id");
+    //     return Err(ProgramError::IncorrectProgramId);
+    // }
 
     // Increment and store the number of times the account has been greeted
     let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
@@ -87,7 +90,11 @@ mod test {
             false,
             Epoch::default(),
         );
-        let instruction_data: Vec<u8> = Vec::new();
+        let set_val_bytes = u32::to_le_bytes(100);
+        let mut instruction_data = [2;5];
+        for i in 0..4 {
+            instruction_data[i+1] = set_val_bytes[i];
+        }
 
         let accounts = vec![account];
 
@@ -102,14 +109,58 @@ mod test {
             GreetingAccount::try_from_slice(&accounts[0].data.borrow())
                 .unwrap()
                 .counter,
-            1
+            100
         );
+        instruction_data = [0;5];
         process_instruction(&program_id, &accounts, &instruction_data).unwrap();
         assert_eq!(
             GreetingAccount::try_from_slice(&accounts[0].data.borrow())
                 .unwrap()
                 .counter,
-            2
+            101
         );
+        instruction_data = [1;5];
+        process_instruction(&program_id, &accounts, &instruction_data).unwrap();
+        assert_eq!(
+            GreetingAccount::try_from_slice(&accounts[0].data.borrow())
+                .unwrap()
+                .counter,
+            100
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_crash() {
+        let program_id = Pubkey::default();
+        let key = Pubkey::default();
+        let mut lamports = 0;
+        let mut data = vec![0; mem::size_of::<u32>()];
+        let owner = Pubkey::default();
+        let account = AccountInfo::new(
+            &key,
+            false,
+            true,
+            &mut lamports,
+            &mut data,
+            &owner,
+            false,
+            Epoch::default(),
+        );
+        let set_val_bytes = u32::to_le_bytes(100);
+        let mut instruction_data = [1;5];
+        for i in 0..4 {
+            instruction_data[i+1] = set_val_bytes[i];
+        }
+
+        let accounts = vec![account];
+
+        assert_eq!(
+            GreetingAccount::try_from_slice(&accounts[0].data.borrow())
+                .unwrap()
+                .counter,
+            0
+        );
+        process_instruction(&program_id, &accounts, &instruction_data).unwrap();
     }
 }
