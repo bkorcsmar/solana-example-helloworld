@@ -14,6 +14,9 @@ import {
 import fs from 'mz/fs';
 import path from 'path';
 import * as borsh from 'borsh';
+//TODO: Why this import does not work. Compare with require keyword.
+// import * as BufferLayout from '@solana/buffer-layout'
+import {Buffer} from 'buffer';
 
 import {getPayer, getRpcUrl, createKeypairFromFile} from './utils';
 
@@ -61,6 +64,7 @@ const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'helloworld-keypair.json');
  */
 class GreetingAccount {
   counter = 0;
+
   constructor(fields: {counter: number} | undefined = undefined) {
     if (fields) {
       this.counter = fields.counter;
@@ -195,6 +199,33 @@ export async function checkProgram(): Promise<void> {
   }
 }
 
+function createIncrementInstruction(): Buffer {
+  const BufferLayout = require('@solana/buffer-layout');
+  const layout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+  const data = Buffer.alloc(layout.span);
+  layout.encode({instruction: 0}, data);
+  return data;
+}
+
+function createDecrementInstruction(): Buffer {
+  const BufferLayout = require('@solana/buffer-layout');
+  const layout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+  const data = Buffer.alloc(layout.span);
+  layout.encode({instruction: 1}, data);
+  return data;
+}
+
+function createSetInstruction(): Buffer {
+  const BufferLayout = require('@solana/buffer-layout');
+  const layout = BufferLayout.struct([
+    BufferLayout.u8('instruction'),
+    BufferLayout.u32('value'),
+  ]);
+  const data = Buffer.alloc(layout.span);
+  layout.encode({instruction: 2, value: 10}, data);
+  return data;
+}
+
 /**
  * Say hello
  */
@@ -203,7 +234,9 @@ export async function sayHello(): Promise<void> {
   const instruction = new TransactionInstruction({
     keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
     programId,
-    data: Buffer.alloc(0), // All instructions are hellos
+    //data: createIncrementInstruction(),
+    data: createDecrementInstruction(),
+    //data: createSetInstruction(),
   });
   await sendAndConfirmTransaction(
     connection,
