@@ -6,17 +6,11 @@ use solana_program::{
     msg,
     program_error::ProgramError,
     pubkey::Pubkey,
+    system_instruction
 };
 
 pub mod instruction;
-use crate::instruction::HelloInstruction;
-
-/// Define the type of state stored in accounts
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct GreetingAccount {
-    /// number of greetings
-    pub counter: u32,
-}
+use crate::instruction::TransferInstruction;
 
 // Declare and export the program's entrypoint
 entrypoint!(process_instruction);
@@ -29,7 +23,7 @@ pub fn process_instruction(
 ) -> ProgramResult {
     msg!("Hello World Rust program entrypoint");
     msg!("Instruction data: {:?}", instruction_data);
-    let instruction = HelloInstruction::unpack(instruction_data)?;
+    let instruction = TransferInstruction::unpack(instruction_data)?;
     msg!("Instruction: {:?}", instruction);
 
 
@@ -37,32 +31,17 @@ pub fn process_instruction(
     let accounts_iter = &mut accounts.iter();
 
     // Get the account to say hello to
-    let account = next_account_info(accounts_iter)?;
-
-    // The account must be owned by the program in order to modify its data
-    // if account.owner != program_id {
-    //     msg!("Greeted account does not have the correct program id");
-    //     return Err(ProgramError::IncorrectProgramId);
-    // }
-
-    // Increment and store the number of times the account has been greeted
-    let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
-
+    let source_account = next_account_info(accounts_iter)?;
+    let target_account = next_account_info(accounts_iter)?;
+    msg!("The source account is: {}", source_account.key);
+    msg!("The target account is: {}", target_account.key);
     match instruction {
-        HelloInstruction::Increment => {
-            greeting_account.counter += 1;
-        }
-        HelloInstruction::Decrement => {
-            greeting_account.counter -= 1;
-        }
-        HelloInstruction::Set(val) => {
-            greeting_account.counter = val;
+
+        TransferInstruction::Transfer(amount) => {
+            msg!("The amount in lamports is: {}", amount);
+            let ix = system_instruction::transfer(source_account.key, target_account.key, amount);
         }
     }
-    greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
-
-    msg!("Greeted {} time(s)!", greeting_account.counter);
-
     Ok(())
 }
 

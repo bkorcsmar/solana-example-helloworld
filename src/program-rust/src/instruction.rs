@@ -1,27 +1,27 @@
 use std::convert::TryInto;
-use solana_program::{program_error::ProgramError};
+use solana_program::{program_error::ProgramError,
+                     msg};
 
 #[derive(Debug)]
-pub enum HelloInstruction {
-    Increment,
-    Decrement,
-    Set(u32)
+pub enum TransferInstruction {
+    Transfer(u64),
 }
 
-impl HelloInstruction {
+impl TransferInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (&tag, rest) = input.split_first().ok_or(ProgramError::InvalidInstructionData)?;
 
         match tag {
-            0 => Ok(HelloInstruction::Increment),
-            1 => Ok(HelloInstruction::Decrement),
             2 => {
-                if rest.len() != 4 {
+                if rest.len() != 8 {
                     return Err(ProgramError::InvalidInstructionData);
                 }
-                let val: Result<[u8; 4], _> = rest[..4].try_into();
+                let val: Result<[u8; 8], _> = rest.try_into();
                 match val {
-                    Ok(i) => Ok(HelloInstruction::Set(u32::from_le_bytes(i))),
+                    Ok(i) => {
+                        let number = u64::from_le_bytes(i);
+                        Ok(TransferInstruction::Transfer(number))
+                    },
                     _ => Err(ProgramError::InvalidInstructionData)
                 }
             }
